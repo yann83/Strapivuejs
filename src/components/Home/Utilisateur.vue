@@ -1,13 +1,13 @@
 <template>
     <entete></entete><!-- Affichage Entete.vue -->
-
+    
 </template>
 
 <script>
     import Entete from './Entete' // importation du composant Entete.vue
 
     export default {
-        name: 'Accueil',
+        name: 'Utilisateur',
         data() { 
             return {
                 
