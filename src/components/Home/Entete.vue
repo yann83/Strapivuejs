@@ -29,6 +29,14 @@
 </template>
 
 <script>
+    //valeurs globales
+    import constantes from'../global/constantes' 
+
+    //appel d'une fonction globale
+    import {getWithExpiry} from '../global/Fonctions.js' 
+
+    //gestion des API
+    import axios from 'axios'
 
     export default {
         name: 'Entete',
@@ -45,7 +53,24 @@
             logoutBouton: function() { // fonction de deconnexion
                 localStorage.removeItem("user")
                 this.$router.push('/')
+            },
         },
+        mounted(){//quand notre composant sera affiché
+            const getuser = getWithExpiry("user")
+            const token = JSON.parse(getuser).jwt
+            axios.get(`${constantes.serveurapi}/users/me` , { 
+                headers : {
+                    'content-type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                }
+                
+            })
+            .then(reponse => {
+                this.utilisateur = reponse.data.username // on cherche à obtenir le username
+            })
+            .catch(err=>{
+                console.log(err)
+            })
         }
     }
 
