@@ -45,7 +45,7 @@
                 titre: 'Mon app VueJS',
                 lien1: 'Page1',
                 lien2: 'Page2',
-                utilisateur: 'Ma Page',
+                utilisateur: 'Inconnu',
                 logout: 'Se deconnecter'
             }
         },
@@ -62,8 +62,7 @@
                 headers : {
                     'content-type': 'application/json',
                     'Authorization': 'Bearer ' + token
-                }
-                
+                }                
             })
             .then(reponse => {
                 this.utilisateur = reponse.data.username // on cherche à obtenir le username
