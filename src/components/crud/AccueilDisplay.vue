@@ -1,15 +1,19 @@
 <template>
   <div>
     <!-- ############# AJOUTER / MODIFIER ############# -->
+
+    <!-- Si boutonAjouMod est true on affiche le bouton Ajouter -->
     <div class="btn btn-outline-primary" v-if="boutonAjouMod" v-on:click="toggleAfficheAjouter">{{boutonAjouter}}</div><!-- je clique on lance la méthode toggleafficheAjouMod -->
-    <form action="" class="mt-4" v-if="afficheAjouMod"><!-- Si afficheAjouMod est true on l'affiche -->
+
+    <!-- Si afficheAjouMod est true on affiche le formulaire d'ajout -->
+    <form action="" class="mt-4" v-if="afficheAjouMod">
       <div class="form-group">
           <label for="title">Titre</label>
-          <input type="text" name="title" class="form-control" required />
+          <input v-model="titre" type="text" name="title" class="form-control" required />
       </div>      
       <div class="form-group">
           <label for="category">Catégorie</label>
-          <select class="form-control" required>
+          <select v-model="categorie" class="form-control" required>
           <option selected>----</option>
           <option value="job">maison</option>
           <option value="rent">appartement</option>
@@ -17,19 +21,22 @@
       </div>
       <div class="form-group">
           <label for="content">Commentaire</label>
-          <textarea cols="30" rows="10" class="form-control" required></textarea>
+          <textarea v-model="commentaire" cols="30" rows="10" class="form-control" required></textarea>
       </div>    
       <div class="form-group">
-          <label for="picture">Image</label>          
-          <input type="file" name="picture" class="form-control"/>
+          <label for="picture">Image</label>
+          <!-- v-model ne fonctionne pas il faut utiliser v-on:change -->          
+          <input type="file" id="file" name="picture" ref="file" class="form-control" v-on:change="handleFileUpload()"/>
           <br><img src="../../assets/default.jpg" alt=""><br>
       </div>           
       <input type="hidden">
-      <div class="btn btn-xs btn-primary">Enregistrer</div>
-      <div  class="btn btn-xs" v-on:click="toggleAfficheAjouter">Annuler</div>
+      <div class="btn btn-xs btn-primary" v-on:click="enregistreAjout">Enregistrer</div>
+      <div class="btn btn-xs" v-on:click="toggleAfficheAjouter">Annuler</div>
     </form>
 
     <!-- ############# VOIR ############# -->
+
+    <!-- Si afficheVue est true on affiche la vue -->
     <div v-if="afficheVue">
       <h3>{{titre}}</h3>
       <br>
@@ -43,6 +50,8 @@
     </div>   
 
     <!-- ############# TABLEAU ############# -->
+
+    <!-- Si afficheTableau est true on affiche le tableau -->
     <div  v-if="afficheTableau">
       <h1 class="text-center">Annonces</h1>
       <!--barre de recherche-->
@@ -94,6 +103,9 @@
         name: 'AccueilDisplay',
         data() { 
             return {
+                //token jwt
+                token: '',
+
                 //variables Cacher/Voir les balises
                 boutonAjouMod: true,
                 afficheAjouMod: false,
@@ -102,7 +114,12 @@
                 boutonAjouter: 'Ajouter une annonce',
                 toutesLesAnnonces: [],
 
-                //Voir
+                //upload image
+                file: null,
+                //isImage: false,
+                //previewImage = '',
+
+                //Voir / Ajouter
                 titre: '',
                 categorie: '',
                 commentaire: '',
@@ -110,14 +127,64 @@
             }
         },
         methods: {
-          toggleAfficheAjouter: function(){
+          toggleAfficheAjouter: function(){ //affiche / cache Ajouter
             this.afficheAjouMod=!this.afficheAjouMod //est égale au contraire de la valeur précente
             this.afficheTableau=!this.afficheTableau
           },          
           completeImgUrl: function(ImgLink){ //sert à ajouter l'url complete pour l'image
             return constantes.serveurapi + ImgLink
           },
-          toogleAfficheView: function(id){
+          handleFileUpload: function(){ // recuperation de l'image
+            this.file = this.$refs.file.files[0]
+            //console.log(this.file)
+            /*
+            if (
+              this.file.name.includes(".png") ||
+              this.file.name.includes(".jpg")
+            ) {
+              this.isImage = true;
+              this.previewImage = URL.createObjectURL(this.file);
+            } else {
+              this.isImage = false;
+            }
+            */
+          },
+          /*enregistreAjout: function(){
+            //console.log(this.token)
+          },*/
+          async enregistreAjout() {
+            try {
+                await axios.post(`${constantes.serveurapi}/${constantes.collectionAnnonces}`, {
+                  headers : {
+                    'content-type': 'application/json',
+                    'Authorization': 'Bearer ' + this.token
+                  },
+                  title: this.titre,
+                  category: this.categorie,
+                  content: this.commentaire                        
+                })
+                const formData = new FormData();
+                formData.append("files",this.file);
+                /*cette image sera associé a un objet de cette collection classifiedad
+                sans le s voir strapi -> plugins -> Content-Types Builder*/
+                formData.append("ref","annonce");
+                formData.append("refId","file");// quel est l'id
+                formData.append("field","file");//quel est le champ
+                console.log("formData",formData);
+                //envoi de l'image avec l'id précedent
+                axios.post(`${constantes.serveurapi}/upload`, {
+                  headers : {
+                    'content-type': 'application/json',
+                    'Authorization': 'Bearer ' + this.token
+                  },
+                  body: formData
+                })                
+                this.$router.push('/Accueil')
+            } catch(e) {
+                this.error = true
+            } 
+        },       
+          toogleAfficheView: function(id){ // affiche / cache Vue
             this.afficheTableau=!this.afficheTableau
             this.afficheVue=!this.afficheVue
             if (!this.afficheTableau) {   // si on desactive le tableau alors on affiche la vue  
@@ -129,16 +196,20 @@
               this.image = chercheObjet['picture']['formats']['thumbnail']['url']              
             } else {
               this.boutonAjouMod = !this.boutonAjouMod //sinon on affiche le tableau et on remet le bouton ajouter
+              this.titre = '' //on remet à vide
+              this.categorie = ''
+              this.commentaire = ''
+              this.image = ''              
             }
           }
         },
-        created() { // partie affichage du tableau
+        created() { // partie affichage du tableau lors création de l'affichage
           const getuser = getWithExpiry("user")
-          const token = JSON.parse(getuser).jwt
+          this.token = JSON.parse(getuser).jwt
           axios.get(`${constantes.serveurapi}/${constantes.collectionAnnonces}` , { 
               headers : {
                   'content-type': 'application/json',
-                  'Authorization': 'Bearer ' + token
+                  'Authorization': 'Bearer ' + this.token
               }
           })
           .then(reponse => {
