@@ -38,7 +38,7 @@
                             <p class="text-center text-primary">
                                 <router-link class="text-decoration-none" to='/Recover'>Mot de passe oublié?</router-link>
                             </p>
-                            <p class="text-center mt-3">Avec Strapi 3.6.8 et VueJS 2</p>
+                            <p class="text-center mt-3">Avec Strapi 3.6.8 et VueJS 2.6.11</p>
                         </div>
                     </form>
                 </div>
