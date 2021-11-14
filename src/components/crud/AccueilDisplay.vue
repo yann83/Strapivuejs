@@ -26,11 +26,12 @@
       <div class="form-group">
           <label for="picture">Image</label>
           <!-- v-model ne fonctionne pas il faut utiliser v-on:change -->          
-          <input type="file" id="file" name="picture" ref="file" class="form-control" v-on:change="handleFileUpload()"/>
+          <input type="file" id="file" name="picture" ref="file" class="form-control" v-on:change="handleFileUpload"/>
           <br><img src="../../assets/default.jpg" alt=""><br>
       </div>           
       <input type="hidden">
-      <div class="btn btn-xs btn-primary" v-on:click="enregistreAjout">Enregistrer</div>
+      <button type="submit" class="btn btn-xs btn-primary" v-on:click="enregistreAjout">Enregistrer</button> 
+      <!--<div class="btn btn-xs btn-primary" v-on:click="enregistreAjout">Enregistrer</div>-->
       <div class="btn btn-xs" v-on:click="toggleAfficheAjouter">Annuler</div>
     </form>
 
@@ -74,7 +75,8 @@
             <td>{{annonce.category}}</td>
             <td>{{annonce.content}}</td>                            
             <td>
-              <img v-bind:src="completeImgUrl(annonce.picture.formats.thumbnail.url)" v-bind:alt="annonce.title"/>
+              <img v-if="annonce.picture" v-bind:src="completeImgUrl(annonce.picture.formats.thumbnail.url)" v-bind:alt="annonce.title"/>
+              <img v-else src='../../assets/default.jpg' v-bind:alt="annonce.title"/>
             </td>
             <td>
               <div class="btn btn-sm btn-outline-success mt-5 ms-3 me-2" v-bind:value=annonce.id>Modifier</div>
@@ -98,6 +100,9 @@
 
     //gestion des API
     import axios from 'axios'
+
+    // post files
+    import FormData from 'form-data'
 
     export default {
         name: 'AccueilDisplay',
@@ -155,53 +160,51 @@
           async enregistreAjout() {
             try {
                 await axios.post(`${constantes.serveurapi}/${constantes.collectionAnnonces}`, {
-                  headers : {
-                    'content-type': 'application/json',
-                    'Authorization': 'Bearer ' + this.token
-                  },
-                  title: this.titre,
-                  category: this.categorie,
-                  content: this.commentaire                        
-                })
-                const formData = new FormData();
-                formData.append("files",this.file);
-                /*cette image sera associé a un objet de cette collection classifiedad
-                sans le s voir strapi -> plugins -> Content-Types Builder*/
-                formData.append("ref","annonce");
-                formData.append("refId","file");// quel est l'id
-                formData.append("field","file");//quel est le champ
-                console.log("formData",formData);
-                //envoi de l'image avec l'id précedent
-                axios.post(`${constantes.serveurapi}/upload`, {
-                  headers : {
-                    'content-type': 'application/json',
-                    'Authorization': 'Bearer ' + this.token
-                  },
-                  body: formData
-                })                
-                this.$router.push('/Accueil')
-            } catch(e) {
-                this.error = true
-            } 
-        },       
-          toogleAfficheView: function(id){ // affiche / cache Vue
-            this.afficheTableau=!this.afficheTableau
-            this.afficheVue=!this.afficheVue
-            if (!this.afficheTableau) {   // si on desactive le tableau alors on affiche la vue  
-              this.boutonAjouMod = !this.boutonAjouMod   // on vire le boutron ajouter      
-              const chercheObjet = this.toutesLesAnnonces.find(element => element.id === id) //on recherche l'objet par son id
-              this.titre = chercheObjet['title']
-              this.categorie = chercheObjet['category']
-              this.commentaire = chercheObjet['content']
-              this.image = chercheObjet['picture']['formats']['thumbnail']['url']              
-            } else {
-              this.boutonAjouMod = !this.boutonAjouMod //sinon on affiche le tableau et on remet le bouton ajouter
-              this.titre = '' //on remet à vide
-              this.categorie = ''
-              this.commentaire = ''
-              this.image = ''              
+                    title: this.titre,
+                    category: this.categorie,
+                    content: this.commentaire
+                  }, {  
+                    headers : {
+                      'content-type': 'application/json',
+                      'Authorization': 'Bearer ' + this.token
+                    }                     
+                  })
+                  .then((response) => { 
+                    let formData = new FormData() // /!\ on doit importer Formdata sinon erreur 400 bad request
+                    formData.append("files",this.file)  // quel est le fichier
+                    formData.append("ref","annonce") // quel est la collection (sans le s à la fin)
+                    formData.append("refId",response.data.id)// quel est l'id
+                    formData.append("field","picture")//quel est le champ          
+                    return axios.post(`${constantes.serveurapi}/upload`, 
+                      formData
+                      ,{
+                        headers : {
+                          'Authorization': 'Bearer ' + this.token
+                        }                    
+                      })  
+                    }) 
+              } catch(error) {
+                  console.error(error)
+              }
+          },       
+            toogleAfficheView: function(id){ // affiche / cache Vue
+              this.afficheTableau=!this.afficheTableau
+              this.afficheVue=!this.afficheVue
+              if (!this.afficheTableau) {   // si on desactive le tableau alors on affiche la vue  
+                this.boutonAjouMod = !this.boutonAjouMod   // on vire le boutron ajouter      
+                const chercheObjet = this.toutesLesAnnonces.find(element => element.id === id) //on recherche l'objet par son id
+                this.titre = chercheObjet['title']
+                this.categorie = chercheObjet['category']
+                this.commentaire = chercheObjet['content']
+                this.image = chercheObjet['picture']['formats']['thumbnail']['url']              
+              } else {
+                this.boutonAjouMod = !this.boutonAjouMod //sinon on affiche le tableau et on remet le bouton ajouter
+                this.titre = '' //on remet à vide
+                this.categorie = ''
+                this.commentaire = ''
+                this.image = ''              
+              }
             }
-          }
         },
         created() { // partie affichage du tableau lors création de l'affichage
           const getuser = getWithExpiry("user")
