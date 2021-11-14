@@ -81,7 +81,7 @@
             <td>
               <div class="btn btn-sm btn-outline-success mt-5 ms-3 me-2" v-bind:value=annonce.id>Modifier</div>
               <div class="btn btn-sm btn-outline-primary mt-5 me-2" v-on:click="toogleAfficheView(annonce.id)" v-bind:value=annonce.id>Voir</div>
-              <div class="btn btn-sm btn-outline-danger mt-5" v-bind:value=annonce.id>Supprimer</div>
+              <div class="btn btn-sm btn-outline-danger mt-5" v-bind:value=annonce.id v-on:click.prevent="supprimerLigne(annonce.id)">Supprimer</div>
             </td>
           </tr>
           <!-- Fin affichage tableau dynamique -->
@@ -157,7 +157,7 @@
           /*enregistreAjout: function(){
             //console.log(this.token)
           },*/
-          async enregistreAjout() {
+          async enregistreAjout() {            
             try {
                 await axios.post(`${constantes.serveurapi}/${constantes.collectionAnnonces}`, {
                     title: this.titre,
@@ -182,29 +182,43 @@
                           'Authorization': 'Bearer ' + this.token
                         }                    
                       })  
-                    }) 
+                    })                    
               } catch(error) {
                   console.error(error)
               }
-          },       
-            toogleAfficheView: function(id){ // affiche / cache Vue
-              this.afficheTableau=!this.afficheTableau
-              this.afficheVue=!this.afficheVue
-              if (!this.afficheTableau) {   // si on desactive le tableau alors on affiche la vue  
-                this.boutonAjouMod = !this.boutonAjouMod   // on vire le boutron ajouter      
-                const chercheObjet = this.toutesLesAnnonces.find(element => element.id === id) //on recherche l'objet par son id
-                this.titre = chercheObjet['title']
-                this.categorie = chercheObjet['category']
-                this.commentaire = chercheObjet['content']
-                this.image = chercheObjet['picture']['formats']['thumbnail']['url']              
-              } else {
-                this.boutonAjouMod = !this.boutonAjouMod //sinon on affiche le tableau et on remet le bouton ajouter
-                this.titre = '' //on remet à vide
-                this.categorie = ''
-                this.commentaire = ''
-                this.image = ''              
+          },
+          async supprimerLigne(index) {
+            try {
+                await axios.delete(`${constantes.serveurapi}/${constantes.collectionAnnonces}/${index}`, {
+                  headers : {
+                      'content-type': 'application/json',
+                      'Authorization': 'Bearer ' + this.token
+                    }
+                })                
+                const suppresionIndex = this.toutesLesAnnonces.findIndex( item => item.id === index )// recherche de l'index = index                
+                this.toutesLesAnnonces.splice( suppresionIndex, 1 )// supression de l'objet
+             } catch(error) {
+                  console.error(error)
               }
+          },      
+          toogleAfficheView: function(id){ // affiche / cache Vue
+            this.afficheTableau=!this.afficheTableau
+            this.afficheVue=!this.afficheVue
+            if (!this.afficheTableau) {   // si on desactive le tableau alors on affiche la vue  
+              this.boutonAjouMod = !this.boutonAjouMod   // on vire le boutron ajouter      
+              const chercheObjet = this.toutesLesAnnonces.find(element => element.id === id) //on recherche l'objet par son id
+              this.titre = chercheObjet['title']
+              this.categorie = chercheObjet['category']
+              this.commentaire = chercheObjet['content']
+              this.image = chercheObjet['picture']['formats']['thumbnail']['url']              
+            } else {
+              this.boutonAjouMod = !this.boutonAjouMod //sinon on affiche le tableau et on remet le bouton ajouter
+              this.titre = '' //on remet à vide
+              this.categorie = ''
+              this.commentaire = ''
+              this.image = ''              
             }
+          }
         },
         created() { // partie affichage du tableau lors création de l'affichage
           const getuser = getWithExpiry("user")
@@ -220,6 +234,7 @@
             for (const annonce of reponse.data) {
               this.toutesLesAnnonces.push(annonce)
             }
+            //console.log('tableau',this.toutesLesAnnonces)
           })
           .catch(err=>{
              console.log(err)
