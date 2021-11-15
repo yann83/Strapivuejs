@@ -3,7 +3,7 @@
     <!-- ############# AJOUTER / MODIFIER ############# -->
 
     <!-- Si boutonAjouMod est true on affiche le bouton Ajouter -->
-    <div class="btn btn-outline-primary" v-if="boutonAjouMod" v-on:click="toggleAfficheAjouter">{{boutonAjouter}}</div><!-- je clique on lance la méthode toggleafficheAjouMod -->
+    <div class="btn btn-outline-primary" v-if="boutonAjouMod" v-on:click="toggleAfficheAjouter('ajouter')">{{boutonAjouter}}</div><!-- je clique on lance la méthode toggleafficheAjouMod -->
 
     <!-- Si afficheAjouMod est true on affiche le formulaire d'ajout -->
     <form action="" class="mt-4" v-if="afficheAjouMod">
@@ -30,9 +30,9 @@
           <br><img src="../../assets/default.jpg" alt=""><br>
       </div>           
       <input type="hidden">
-      <button type="submit" class="btn btn-xs btn-primary" v-on:click="enregistreAjout">Enregistrer</button> 
+      <button type="submit" class="btn btn-xs btn-primary" v-on:click.prevent="enregistreAjout">Enregistrer</button> 
       <!--<div class="btn btn-xs btn-primary" v-on:click="enregistreAjout">Enregistrer</div>-->
-      <div class="btn btn-xs" v-on:click="toggleAfficheAjouter">Annuler</div>
+      <div class="btn btn-xs" v-on:click="toggleAfficheAjouter('ajouter')">Annuler</div>
     </form>
 
     <!-- ############# VOIR ############# -->
@@ -79,7 +79,7 @@
               <img v-else src='../../assets/default.jpg' v-bind:alt="annonce.title"/>
             </td>
             <td>
-              <div class="btn btn-sm btn-outline-success mt-5 ms-3 me-2" v-bind:value=annonce.id>Modifier</div>
+              <div class="btn btn-sm btn-outline-success mt-5 ms-3 me-2" v-on:click="toggleAfficheAjouter('modifier')" v-bind:value=annonce.id>Modifier</div>
               <div class="btn btn-sm btn-outline-primary mt-5 me-2" v-on:click="toogleAfficheView(annonce.id)" v-bind:value=annonce.id>Voir</div>
               <div class="btn btn-sm btn-outline-danger mt-5" v-bind:value=annonce.id v-on:click.prevent="supprimerLigne(annonce.id)">Supprimer</div>
             </td>
@@ -132,9 +132,15 @@
             }
         },
         methods: {
-          toggleAfficheAjouter: function(){ //affiche / cache Ajouter
+          toggleAfficheAjouter: function(boutonType){ //affiche / cache Ajouter
             this.afficheAjouMod=!this.afficheAjouMod //est égale au contraire de la valeur précente
             this.afficheTableau=!this.afficheTableau
+            if (boutonType == 'ajouter') {
+              this.boutonAjouter = 'Ajouter une annonce'
+            }            
+            if (boutonType == 'modifier' & this.afficheAjouMod === true) {
+              this.boutonAjouter = 'Modifier une annonce'
+            }           
           },          
           completeImgUrl: function(ImgLink){ //sert à ajouter l'url complete pour l'image
             return constantes.serveurapi + ImgLink
@@ -154,9 +160,6 @@
             }
             */
           },
-          /*enregistreAjout: function(){
-            //console.log(this.token)
-          },*/
           async enregistreAjout() {            
             try {
                 await axios.post(`${constantes.serveurapi}/${constantes.collectionAnnonces}`, {
@@ -169,19 +172,24 @@
                       'Authorization': 'Bearer ' + this.token
                     }                     
                   })
-                  .then((response) => { 
+                  .then((response) => {
+                    let postId = response.data.id 
                     let formData = new FormData() // /!\ on doit importer Formdata sinon erreur 400 bad request
                     formData.append("files",this.file)  // quel est le fichier
                     formData.append("ref","annonce") // quel est la collection (sans le s à la fin)
-                    formData.append("refId",response.data.id)// quel est l'id
+                    formData.append("refId",postId)// quel est l'id
                     formData.append("field","picture")//quel est le champ          
-                    return axios.post(`${constantes.serveurapi}/upload`, 
+                    axios.post(`${constantes.serveurapi}/upload`, 
                       formData
                       ,{
                         headers : {
                           'Authorization': 'Bearer ' + this.token
                         }                    
-                      })  
+                      })
+                      .then((uploadedFile) => { 
+                        this.toutesLesAnnonces.push({id: postId,title: this.titre,category: this.categorie,content: this.commentaire,picture: uploadedFile.data[0]})
+                        this.toggleAfficheAjouter()
+                      })
                     })                    
               } catch(error) {
                   console.error(error)
