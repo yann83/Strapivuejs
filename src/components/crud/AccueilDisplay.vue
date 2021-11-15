@@ -3,7 +3,7 @@
     <!-- ############# AJOUTER / MODIFIER ############# -->
 
     <!-- Si boutonAjouMod est true on affiche le bouton Ajouter -->
-    <div class="btn btn-outline-primary" v-if="boutonAjouMod" v-on:click="toggleAfficheAjouter('ajouter')">{{boutonAjouter}}</div><!-- je clique on lance la méthode toggleafficheAjouMod -->
+    <div class="btn btn-outline-primary" v-if="boutonAjouMod" v-on:click="toggleAfficheAjouter('ajouter',null)">{{boutonAjouter}}</div><!-- je clique on lance la méthode toggleafficheAjouMod -->
 
     <!-- Si afficheAjouMod est true on affiche le formulaire d'ajout -->
     <form action="" class="mt-4" v-if="afficheAjouMod">
@@ -14,9 +14,9 @@
       <div class="form-group">
           <label for="category">Catégorie</label>
           <select v-model="categorie" class="form-control" required>
-          <option selected>----</option>
-          <option value="job">maison</option>
-          <option value="rent">appartement</option>
+          <option disabled value="">----</option>
+          <option value="maison">maison</option> <!-- value doit être egal au contenu de category -->
+          <option value="appartement">appartement</option>
           </select>
       </div>
       <div class="form-group">
@@ -27,12 +27,12 @@
           <label for="picture">Image</label>
           <!-- v-model ne fonctionne pas il faut utiliser v-on:change -->          
           <input type="file" id="file" name="picture" ref="file" class="form-control" v-on:change="handleFileUpload"/>
-          <br><img src="../../assets/default.jpg" alt=""><br>
+          <br><img v-bind:src="completeImgUrl(image)" v-bind:alt="titre"><br>
       </div>           
       <input type="hidden">
-      <button type="submit" class="btn btn-xs btn-primary" v-on:click.prevent="enregistreAjout">Enregistrer</button> 
+      <button type="submit" class="btn btn-xs btn-primary mt-5" v-on:click.prevent="enregistreAjout">Enregistrer</button> 
       <!--<div class="btn btn-xs btn-primary" v-on:click="enregistreAjout">Enregistrer</div>-->
-      <div class="btn btn-xs" v-on:click="toggleAfficheAjouter('ajouter')">Annuler</div>
+      <div class="btn btn-xs mt-5" v-on:click="toggleAfficheAjouter('ajouter',null)">Annuler</div>
     </form>
 
     <!-- ############# VOIR ############# -->
@@ -79,7 +79,7 @@
               <img v-else src='../../assets/default.jpg' v-bind:alt="annonce.title"/>
             </td>
             <td>
-              <div class="btn btn-sm btn-outline-success mt-5 ms-3 me-2" v-on:click="toggleAfficheAjouter('modifier')" v-bind:value=annonce.id>Modifier</div>
+              <div class="btn btn-sm btn-outline-success mt-5 ms-3 me-2" v-on:click="toggleAfficheAjouter('modifier',annonce.id)" v-bind:value=annonce.id>Modifier</div>
               <div class="btn btn-sm btn-outline-primary mt-5 me-2" v-on:click="toogleAfficheView(annonce.id)" v-bind:value=annonce.id>Voir</div>
               <div class="btn btn-sm btn-outline-danger mt-5" v-bind:value=annonce.id v-on:click.prevent="supprimerLigne(annonce.id)">Supprimer</div>
             </td>
@@ -132,16 +132,27 @@
             }
         },
         methods: {
-          toggleAfficheAjouter: function(boutonType){ //affiche / cache Ajouter
+          toggleAfficheAjouter: function(boutonType,id){ //affiche / cache Ajouter
             this.afficheAjouMod=!this.afficheAjouMod //est égale au contraire de la valeur précente
             this.afficheTableau=!this.afficheTableau
             if (boutonType == 'ajouter') {
               this.boutonAjouter = 'Ajouter une annonce'
+              this.titre = '' //on remet à vide
+              this.categorie = ''
+              this.commentaire = ''
+              this.image = '../../assets/default.jpg' 
             }            
             if (boutonType == 'modifier' & this.afficheAjouMod === true) {
               this.boutonAjouter = 'Modifier une annonce'
+              if (id) {
+                const chercheObjet = this.toutesLesAnnonces.find(element => element.id === id) //on recherche l'objet par son id
+                this.titre = chercheObjet['title']
+                this.categorie = chercheObjet['category']
+                this.commentaire = chercheObjet['content']
+                this.image = chercheObjet['picture']['formats']['thumbnail']['url']                   
+              }
             }           
-          },          
+          },        
           completeImgUrl: function(ImgLink){ //sert à ajouter l'url complete pour l'image
             return constantes.serveurapi + ImgLink
           },
@@ -220,11 +231,7 @@
               this.commentaire = chercheObjet['content']
               this.image = chercheObjet['picture']['formats']['thumbnail']['url']              
             } else {
-              this.boutonAjouMod = !this.boutonAjouMod //sinon on affiche le tableau et on remet le bouton ajouter
-              this.titre = '' //on remet à vide
-              this.categorie = ''
-              this.commentaire = ''
-              this.image = ''              
+              this.boutonAjouMod = !this.boutonAjouMod //sinon on affiche le tableau et on remet le bouton ajouter             
             }
           }
         },
