@@ -30,7 +30,8 @@
           <br><img v-bind:src="completeImgUrl(image)" v-bind:alt="titre"><br>
       </div>           
       <input type="hidden">
-      <button type="submit" class="btn btn-xs btn-primary mt-5" v-on:click.prevent="enregistreAjout">Enregistrer</button> 
+      <button v-if="switchAjoutMod" type="submit" class="btn btn-xs btn-primary mt-5" v-on:click.prevent="enregistreAjoutModif('post',null)">Enregistrer</button> 
+      <button v-else type="submit" class="btn btn-xs btn-primary mt-5" v-on:click.prevent="enregistreAjoutModif('put',ItemId)">Enregistrer</button>
       <!--<div class="btn btn-xs btn-primary" v-on:click="enregistreAjout">Enregistrer</div>-->
       <div class="btn btn-xs mt-5" v-on:click="toggleAfficheAjouter('ajouter',null)">Annuler</div>
     </form>
@@ -118,13 +119,15 @@
                 afficheTableau: true,
                 boutonAjouter: 'Ajouter une annonce',
                 toutesLesAnnonces: [],
+                switchAjoutMod : false,
 
                 //upload image
                 file: null,
                 //isImage: false,
                 //previewImage = '',
 
-                //Voir / Ajouter
+                //Voir / Ajouter / Modifier
+                ItemId: 0,
                 titre: '',
                 categorie: '',
                 commentaire: '',
@@ -136,6 +139,8 @@
             this.afficheAjouMod=!this.afficheAjouMod //est égale au contraire de la valeur précente
             this.afficheTableau=!this.afficheTableau
             if (boutonType == 'ajouter') {
+              this.switchAjoutMod = true
+              this.ItemId = 0
               this.boutonAjouter = 'Ajouter une annonce'
               this.titre = '' //on remet à vide
               this.categorie = ''
@@ -144,17 +149,30 @@
             }            
             if (boutonType == 'modifier' & this.afficheAjouMod === true) {
               this.boutonAjouter = 'Modifier une annonce'
+              this.switchAjoutMod = false
               if (id) {
                 const chercheObjet = this.toutesLesAnnonces.find(element => element.id === id) //on recherche l'objet par son id
+                this.ItemId = id
                 this.titre = chercheObjet['title']
                 this.categorie = chercheObjet['category']
                 this.commentaire = chercheObjet['content']
-                this.image = chercheObjet['picture']['formats']['thumbnail']['url']                   
+                console.log('erreur',chercheObjet['picture'] )
+                if (chercheObjet['picture']) {
+                  this.image = chercheObjet['picture']['formats']['thumbnail']['url']  
+                } else {
+                  this.image = '../../assets/default.jpg' 
+                }           
               }
             }           
           },        
           completeImgUrl: function(ImgLink){ //sert à ajouter l'url complete pour l'image
-            return constantes.serveurapi + ImgLink
+            if (ImgLink.slice(0,2) == '..') {
+              return this.image
+            }
+            if (!ImgLink) {
+              return this.image
+            }
+            return constantes.serveurapi + ImgLink            
           },
           handleFileUpload: function(){ // recuperation de l'image
             this.file = this.$refs.file.files[0]
@@ -171,40 +189,72 @@
             }
             */
           },
-          async enregistreAjout() {            
+          async enregistreAjoutModif(Type,Item) { 
+            let collectionUrl = ''
+            if (Item) {
+              collectionUrl = `${constantes.serveurapi}/${constantes.collectionAnnonces}/${Item}`
+            } else {
+              collectionUrl = `${constantes.serveurapi}/${constantes.collectionAnnonces}`
+            }
+            console.log('Type',Type)
+            console.log('Item',Item)
+            console.log('collectionUrl',collectionUrl)
             try {
-                await axios.post(`${constantes.serveurapi}/${constantes.collectionAnnonces}`, {
-                    title: this.titre,
-                    category: this.categorie,
-                    content: this.commentaire
-                  }, {  
+                await axios({
+                    method: `${Type}`,//'post',
+                    url: `${collectionUrl}`,
+                    data : {
+                      title: this.titre,
+                      category: this.categorie,
+                      content: this.commentaire
+                    },  
                     headers : {
                       'content-type': 'application/json',
                       'Authorization': 'Bearer ' + this.token
                     }                     
                   })
                   .then((response) => {
-                    let postId = response.data.id 
-                    let formData = new FormData() // /!\ on doit importer Formdata sinon erreur 400 bad request
-                    formData.append("files",this.file)  // quel est le fichier
-                    formData.append("ref","annonce") // quel est la collection (sans le s à la fin)
-                    formData.append("refId",postId)// quel est l'id
-                    formData.append("field","picture")//quel est le champ          
-                    axios.post(`${constantes.serveurapi}/upload`, 
-                      formData
-                      ,{
-                        headers : {
-                          'Authorization': 'Bearer ' + this.token
-                        }                    
-                      })
-                      .then((uploadedFile) => { 
-                        this.toutesLesAnnonces.push({id: postId,title: this.titre,category: this.categorie,content: this.commentaire,picture: uploadedFile.data[0]})
-                        this.toggleAfficheAjouter()
-                      })
-                    })                    
+                    if (this.file) {
+                      let postId = response.data.id 
+                      let formData = new FormData() // /!\ on doit importer Formdata sinon erreur 400 bad request
+                      formData.append("files",this.file)  // quel est le fichier
+                      formData.append("ref","annonce") // quel est la collection (sans le s à la fin)
+                      formData.append("refId",postId)// quel est l'id
+                      formData.append("field","picture")//quel est le champ          
+                      axios.post(`${constantes.serveurapi}/upload`, 
+                        formData
+                        ,{
+                          headers : {
+                            'Authorization': 'Bearer ' + this.token
+                          }                    
+                        })
+                        .then((uploadedFile) => {                       
+                          if (Item) {
+                            const objIndex = this.toutesLesAnnonces.findIndex((obj => obj.id == Item));
+                            this.toutesLesAnnonces[objIndex].title = this.titre
+                            this.toutesLesAnnonces[objIndex].category = this.categorie
+                            this.toutesLesAnnonces[objIndex].content = this.commentaire
+                            this.toutesLesAnnonces[objIndex].picture = uploadedFile.data[0]
+                          } else {
+                            this.toutesLesAnnonces.push({id: postId,title: this.titre,category: this.categorie,content: this.commentaire,picture: uploadedFile.data[0]})                        
+                          }                          
+                        })
+                    } else {
+                      if (Item) {
+                        const objIndex = this.toutesLesAnnonces.findIndex((obj => obj.id == Item));
+                        this.toutesLesAnnonces[objIndex].title = this.titre
+                        this.toutesLesAnnonces[objIndex].category = this.categorie
+                        this.toutesLesAnnonces[objIndex].content = this.commentaire 
+                      } else {
+                        this.toutesLesAnnonces.push({id: response.data.id,title: this.titre,category: this.categorie,content: this.commentaire,picture: ''})                        
+                      }
+                    }
+                  }) 
+                  this.toggleAfficheAjouter()                   
               } catch(error) {
                   console.error(error)
               }
+
           },
           async supprimerLigne(index) {
             try {
