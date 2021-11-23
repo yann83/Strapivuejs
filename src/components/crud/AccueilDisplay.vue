@@ -57,7 +57,7 @@
     <div  v-if="afficheTableau">
       <h1 class="text-center">Annonces</h1>
       <!--barre de recherche-->
-      <input type="search" class="form-control" placeholder="Rechercher par titre" />
+      <input v-model="filter" type="search" class="form-control" placeholder="Rechercher par titre et catégorie" />
 
       <!-- Affichage du tableau -->
       <table class="table table-bordered">
@@ -71,7 +71,7 @@
         </thead>
         <tbody>
           <!-- Debut affichage tableau dynamique -->
-          <tr v-bind:key="index" v-for="(annonce,index) in toutesLesAnnonces" > <!-- Index obligatoire pour boucle for -->
+          <tr v-bind:key="index" v-for="(annonce,index) in lignesFiltrees" > <!-- Index obligatoire pour boucle for -->
             <td>{{annonce.title}}</td>
             <td>{{annonce.category}}</td>
             <td>{{annonce.content}}</td>                            
@@ -112,6 +112,9 @@
                 //token jwt
                 token: '',
 
+                //recherche
+                filter: '',
+
                 //variables Cacher/Voir les balises
                 boutonAjouMod: true,
                 afficheAjouMod: false,
@@ -133,6 +136,18 @@
                 commentaire: '',
                 image: ''
             }
+        },
+        computed: { //fonctions sans parametres mis en cache : elles ne se recharge pas tout le temps
+          lignesFiltrees() { //filtrage du tableau
+            return this.toutesLesAnnonces.filter(annonce => {
+              const title = annonce.title.toString().toLowerCase();
+              const category = annonce.category.toLowerCase();
+              const searchTerm = this.filter.toLowerCase();
+
+              return category.includes(searchTerm) ||
+                title.includes(searchTerm);
+            });
+          }
         },
         methods: {
           toggleAfficheAjouter: function(boutonType,id){ //affiche / cache Ajouter
